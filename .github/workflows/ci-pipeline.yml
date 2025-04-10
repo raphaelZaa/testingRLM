@@ -33,16 +33,12 @@ jobs:
           JF_USER: ${{ secrets.ARTIFACTORY_USERNAME }}
           JF_PASSWORD: ${{ secrets.ARTIFACTORY_IDENTITY_TOKEN }}
           JF_GIT_TOKEN: ${{ secrets.GH_TOKEN }}
-          JFROG_CLI_BUILD_NAME: spring-petclinic
+          JFROG_CLI_BUILD_NAME: newFeature
           JFROG_CLI_BUILD_NUMBER: ${{ github.run_number }}
 
       # 4. Clean local Maven cache
       - name: Clear local Maven cache
         run: rm -rf ~/.m2/repository
-
-      # 5. Ensure mvnw is executable
-      - name: Ensure mvnw is executable
-        run: chmod +x mvnw
 
       # 6. Verify JFrog connection
       - name: Ping JFrog Connection
