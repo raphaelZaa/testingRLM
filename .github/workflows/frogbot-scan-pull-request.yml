@@ -26,15 +26,15 @@ jobs:
 
           # [Mandatory if JF_ACCESS_TOKEN is not provided]
           # JFrog username with 'read' permissions for Xray. Must be provided with JF_PASSWORD
-          JF_USER: ${{ secrets.JF_USER }}
+          JF_USER: ${{ secrets.ARTIFACTORY_USERNAME }}
 
           # [Mandatory if JF_ACCESS_TOKEN is not provided]
           # JFrog password. Must be provided with JF_USER
-          JF_PASSWORD: ${{ secrets.JF_ACCESS_TOKEN }}
+          JF_PASSWORD: ${{ secrets.ARTIFACTORY_IDENTITY_TOKEN }}
 
           # [Mandatory]
           # The GitHub token is automatically generated for the job
-          JF_GIT_TOKEN: ${{ secrets.JF_GIT_TOKEN }}
+          JF_GIT_TOKEN: ${{ secrets.GH_TOKEN }}
           
         # [Mandatory if using OIDC authentication protocol instead of JF_ACCESS_TOKEN]
         # Insert to oidc-provider-name the 'Provider Name' defined in the OIDC integration configured in the JPD
