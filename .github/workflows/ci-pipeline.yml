@@ -10,6 +10,11 @@ on:
   pull_request:
     branches: [ "main" ]
 
+# Permissions: Grant the workflow permission to request OIDC tokens
+permissions:
+  id-token: write # Required for OIDC authentication with JFrog
+  contents: read  # Default permission needed for checkout
+
 # Define environment variables for reusable values
 env:
   # Define the build name (used across multiple steps)
@@ -21,6 +26,7 @@ env:
   # Define the Maven repositories (replace if different)
   MAVEN_DEV_VIRTUAL_REPO: newFeature-maven-dev-virtual
   MAVEN_DEV_LOCAL_REPO: newFeature-maven-dev-local
+  # Define the filename for the predicate JSON
   PREDICATE_FILENAME: predicate.json
 
 jobs:
@@ -39,21 +45,25 @@ jobs:
           distribution: ${{ env.JAVA_DISTRIBUTION }}
           java-version: ${{ env.JAVA_VERSION }}
 
-      # 3. Setup JFrog CLI: Install and configure JFrog CLI
-      #    Secrets provide authentication details
+      # 3. Setup JFrog CLI: Install and configure JFrog CLI using OIDC
       - name: Setup JFrog CLI
         uses: jfrog/setup-jfrog-cli@v4
         env:
-          JF_URL: https://trialt0zppb.jfrog.io 
+          # JFrog Platform URL
+          JF_URL: https://trialt0zppb.jfrog.io # Make sure this is correct
         with:
-          oidc-provider-name: github-jfrog 
+          # Name of the OIDC Integration configured in JFrog Security > Identity Providers
+          oidc-provider-name: github-jfrog
+          # Audience configured within the OIDC provider settings in JFrog
           oidc-audience: my-aud
+          # Note: No secrets (JF_USER/PASSWORD/ACCESS_TOKEN) are needed here
 
       # 4. Clean local Maven cache (Optional but can prevent issues)
       - name: Clear local Maven cache
         run: rm -rf ~/.m2/repository
 
       # 5. Verify JFrog connection (Renumbered)
+      #    This will now use the OIDC token obtained in the setup step
       - name: Ping JFrog Connection
         run: jf rt ping
 
@@ -82,6 +92,8 @@ jobs:
           echo "Collecting environment variables..."
           jf rt build-collect-env "${{ env.JFROG_BUILD_NAME }}" "${{ github.run_number }}"
           echo "Adding Git information..."
+          # Note: OIDC might require specific setup for git operations if using a different token
+          # Ensure the default GITHUB_TOKEN has permissions if needed, or configure JF_GIT_TOKEN if necessary
           jf rt build-add-git "${{ env.JFROG_BUILD_NAME }}" "${{ github.run_number }}"
           echo "Publishing build info..."
           jf rt build-publish "${{ env.JFROG_BUILD_NAME }}" "${{ github.run_number }}"
@@ -101,14 +113,14 @@ jobs:
         env:
           # Provide the GPG passphrase via environment variable
           JFROG_CLI_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-          # Make GitHub context available to the script
-          GITHUB_CONTEXT_JSON: ${{ toJSON(github) }}
+          # GPG Key details are still needed from secrets
+          GPG_PRIVATE_KEY_SECRET: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_KEY_ALIAS_SECRET: ${{ secrets.GPG_KEY_ALIAS }}
         run: |
           echo "Creating meaningful predicate file (${{ env.PREDICATE_FILENAME }})..."
           # Create a JSON object with relevant demo information
-          # Using printf for better multi-line handling and quoting
           printf '{
-            "signedBy": "GitHub Actions Workflow",
+            "signedBy": "GitHub Actions Workflow (OIDC)",
             "actor": "%s",
             "triggeringEvent": "%s",
             "workflowRunURL": "%s/%s/actions/runs/%s",
@@ -128,10 +140,11 @@ jobs:
 
           echo "Creating signature evidence for build ${{ env.JFROG_BUILD_NAME }}/${{ github.run_number }}..."
           # Create the signature evidence using the GPG key and the predicate file
+          # Note: Pass GPG key details via env vars to avoid exposing them directly in logs
           jf evd create \
             --build-name "${{ env.JFROG_BUILD_NAME }}" \
             --build-number "${{ github.run_number }}" \
-            --key "${{ secrets.GPG_PRIVATE_KEY }}" \
-            --key-alias "${{ secrets.GPG_KEY_ALIAS }}" \
+            --key "${GPG_PRIVATE_KEY_SECRET}" \
+            --key-alias "${GPG_KEY_ALIAS_SECRET}" \
             --predicate ${{ env.PREDICATE_FILENAME }} \
             --predicate-type https://jfrog.com/evidence/signature/v1
