@@ -117,22 +117,6 @@ jobs:
           GPG_PRIVATE_KEY_SECRET: ${{ secrets.GPG_PRIVATE_KEY }}
           GPG_KEY_ALIAS_SECRET: ${{ secrets.GPG_KEY_ALIAS }}
         run: |
-          echo "Creating meaningful predicate file (${{ env.PREDICATE_FILENAME }})..."
-          # Create a JSON object with relevant demo information
-          "${{ github.actor }}" \
-          "${{ github.event_name }}" \
-          "${{ github.server_url }}" \
-          "${{ github.repository }}" \
-          "${{ github.run_id }}" \
-          "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
-          > ${{ env.PREDICATE_FILENAME }}
-
-          echo "Predicate content:"
-          cat ${{ env.PREDICATE_FILENAME }}
-
-          echo "Creating signature evidence for build ${{ env.JFROG_BUILD_NAME }}/${{ github.run_number }}..."
-          # Create the signature evidence using the GPG key and the predicate file
-          # Note: Pass GPG key details via env vars to avoid exposing them directly in logs
           jf evd create \
             --build-name "${{ env.JFROG_BUILD_NAME }}" \
             --build-number "${{ github.run_number }}" \
