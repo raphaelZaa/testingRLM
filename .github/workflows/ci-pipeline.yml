@@ -109,16 +109,16 @@ jobs:
       # 10. Create Evidence Signature for the Build
       #     Uses the configured GPG key to sign the build info, creating evidence
       - name: Create Build Signature Evidence
-      if: success()
-      env:
-        JFROG_CLI_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-      run: |
-        echo "${{ secrets.GPG_PRIVATE_KEY }}" > private_key.pem
-        cat private_key.pem
-        jf evd create \
-          --build-name "${{ env.JFROG_BUILD_NAME }}" \
-          --build-number "${{ github.run_number }}" \
-          --key private_key.pem \
-          --key-alias "${{ secrets.GPG_KEY_ALIAS }}" \
-          --predicate ./sign.json \
-          --predicate-type https://jfrog.com/evidence/signature/v1
+        if: success()
+        env:
+          JFROG_CLI_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          echo "${{ secrets.GPG_PRIVATE_KEY }}" > private_key.pem
+          cat private_key.pem
+          jf evd create \
+            --build-name "${{ env.JFROG_BUILD_NAME }}" \
+            --build-number "${{ github.run_number }}" \
+            --key private_key.pem \
+            --key-alias "${{ secrets.GPG_KEY_ALIAS }}" \
+            --predicate ./sign.json \
+            --predicate-type https://jfrog.com/evidence/signature/v1
