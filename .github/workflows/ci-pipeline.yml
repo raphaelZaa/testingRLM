@@ -53,7 +53,7 @@ jobs:
           JF_URL: https://trialt0zppb.jfrog.io # Make sure this is correct
         with:
           # Name of the OIDC Integration configured in JFrog Security > Identity Providers
-          oidc-provider-name: github-jfrog
+          oidc-provider-name: github
           # Audience configured within the OIDC provider settings in JFrog
           oidc-audience: my-aud
           # Note: No secrets (JF_USER/PASSWORD/ACCESS_TOKEN) are needed here
