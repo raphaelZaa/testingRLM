@@ -21,6 +21,7 @@ env:
   # Define the Maven repositories (replace if different)
   MAVEN_DEV_VIRTUAL_REPO: newFeature-maven-dev-virtual
   MAVEN_DEV_LOCAL_REPO: newFeature-maven-dev-local
+  PREDICATE_FILENAME: predicate.json
 
 jobs:
   build-scan-sign: # Renamed job for clarity
@@ -101,18 +102,44 @@ jobs:
           echo "Scanning build ${{ env.JFROG_BUILD_NAME }}/${{ github.run_number }} with Xray..."
           jf bs "${{ env.JFROG_BUILD_NAME }}" "${{ github.run_number }}" --fail=true
 
-      # 10. Create Evidence Signature for the Build (NEW STEP)
+      # 10. Create Evidence Signature for the Build
       #     Uses the configured GPG key to sign the build info, creating evidence
       - name: Create Build Signature Evidence
         if: success() # Only run if previous steps succeeded
         env:
           # Provide the GPG passphrase via environment variable
           JFROG_CLI_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          # Make GitHub context available to the script
+          GITHUB_CONTEXT_JSON: ${{ toJSON(github) }}
         run: |
+          echo "Creating meaningful predicate file (${{ env.PREDICATE_FILENAME }})..."
+          # Create a JSON object with relevant demo information
+          # Using printf for better multi-line handling and quoting
+          printf '{
+            "signedBy": "GitHub Actions Workflow",
+            "actor": "%s",
+            "triggeringEvent": "%s",
+            "workflowRunURL": "%s/%s/actions/runs/%s",
+            "reason": "Standard post-build signature for demo purposes",
+            "timestamp": "%s"
+          }' \
+          "${{ github.actor }}" \
+          "${{ github.event_name }}" \
+          "${{ github.server_url }}" \
+          "${{ github.repository }}" \
+          "${{ github.run_id }}" \
+          "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+          > ${{ env.PREDICATE_FILENAME }}
+
+          echo "Predicate content:"
+          cat ${{ env.PREDICATE_FILENAME }}
+
           echo "Creating signature evidence for build ${{ env.JFROG_BUILD_NAME }}/${{ github.run_number }}..."
+          # Create the signature evidence using the GPG key and the predicate file
           jf evd create \
             --build-name "${{ env.JFROG_BUILD_NAME }}" \
             --build-number "${{ github.run_number }}" \
             --key "${{ secrets.GPG_PRIVATE_KEY }}" \
             --key-alias "${{ secrets.GPG_KEY_ALIAS }}" \
+            --predicate ${{ env.PREDICATE_FILENAME }} \
             --predicate-type https://jfrog.com/evidence/signature/v1
