@@ -105,7 +105,7 @@ jobs:
         run: |
           echo "Scanning build ${{ env.JFROG_BUILD_NAME }}/${{ github.run_number }} with Xray..."
           jf bs "${{ env.JFROG_BUILD_NAME }}" "${{ github.run_number }}" --fail=true
-
+      
       # 10. Create Evidence Signature for the Build
       #     Uses the configured GPG key to sign the build info, creating evidence
       - name: Create Build Signature Evidence
@@ -144,7 +144,7 @@ jobs:
           jf evd create \
             --build-name "${{ env.JFROG_BUILD_NAME }}" \
             --build-number "${{ github.run_number }}" \
-            --key "${GPG_PRIVATE_KEY_SECRET}" \
-            --key-alias "${GPG_KEY_ALIAS_SECRET}" \
+            --key ${{ secrets.GPG_PRIVATE_KEY }} \
+            --key-alias "${{ secrets.GPG_KEY_ALIAS }}" \
             --predicate ${{ env.PREDICATE_FILENAME }} \
             --predicate-type https://jfrog.com/evidence/signature/v1
