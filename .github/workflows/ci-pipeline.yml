@@ -113,7 +113,6 @@ jobs:
         env:
           JFROG_CLI_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: |
-          cat private_key.pem
           jf evd create \
             --build-name "${{ env.JFROG_BUILD_NAME }}" \
             --build-number "${{ github.run_number }}" \
