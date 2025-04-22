@@ -43,19 +43,11 @@ jobs:
       #    Secrets provide authentication details
       - name: Setup JFrog CLI
         uses: jfrog/setup-jfrog-cli@v4
-        id: setup-cli
         env:
-          # JFrog Platform URL (e.g., https://your-org.jfrog.io)
-          JF_URL: ${{ secrets.JF_RT_URL }}
-          # JFrog Platform Username or Access Token User
-          JF_USER: ${{ secrets.ARTIFACTORY_USERNAME }}
-          # JFrog Platform Password or Identity Token
-          JF_PASSWORD: ${{ secrets.ARTIFACTORY_IDENTITY_TOKEN }}
-          # GitHub Token (used by build-add-git)
-          JF_GIT_TOKEN: ${{ secrets.GH_TOKEN }}
-          # Set JFrog CLI environment variables for build name/number
-          JFROG_CLI_BUILD_NAME: ${{ env.JFROG_BUILD_NAME }}
-          JFROG_CLI_BUILD_NUMBER: ${{ github.run_number }}
+          JF_URL: https://trialt0zppb.jfrog.io 
+        with:
+          oidc-provider-name: github-jfrog 
+          oidc-audience: my-aud
 
       # 4. Clean local Maven cache (Optional but can prevent issues)
       - name: Clear local Maven cache
