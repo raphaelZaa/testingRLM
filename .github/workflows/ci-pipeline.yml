@@ -120,7 +120,7 @@ jobs:
           jf evd create \
             --build-name "${{ env.JFROG_BUILD_NAME }}" \
             --build-number "${{ github.run_number }}" \
-            --key ${{ secrets.GPG_PRIVATE_KEY }} \
+            --key "${{ secrets.GPG_PRIVATE_KEY }}" \
             --key-alias "${{ secrets.GPG_KEY_ALIAS }}" \
             --predicate ./sign.json \
             --predicate-type https://jfrog.com/evidence/signature/v1
