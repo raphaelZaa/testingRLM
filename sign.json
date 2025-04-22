@@ -1,0 +1,8 @@
+{
+  "signedBy": "GitHub Actions Workflow (OIDC)",
+  "actor": "jesseh",
+  "triggeringEvent": "%s",
+  "workflowRunURL": "%s/%s/actions/runs/%s",
+  "reason": "Standard post-build signature for demo purposes",
+  "timestamp": "%s"
+}

@@ -119,14 +119,6 @@ jobs:
         run: |
           echo "Creating meaningful predicate file (${{ env.PREDICATE_FILENAME }})..."
           # Create a JSON object with relevant demo information
-          printf '{
-            "signedBy": "GitHub Actions Workflow (OIDC)",
-            "actor": "%s",
-            "triggeringEvent": "%s",
-            "workflowRunURL": "%s/%s/actions/runs/%s",
-            "reason": "Standard post-build signature for demo purposes",
-            "timestamp": "%s"
-          }' \
           "${{ github.actor }}" \
           "${{ github.event_name }}" \
           "${{ github.server_url }}" \
@@ -146,5 +138,5 @@ jobs:
             --build-number "${{ github.run_number }}" \
             --key ${{ secrets.GPG_PRIVATE_KEY }} \
             --key-alias "${{ secrets.GPG_KEY_ALIAS }}" \
-            --predicate ${{ env.PREDICATE_FILENAME }} \
+            --predicate ./sign.json \
             --predicate-type https://jfrog.com/evidence/signature/v1
