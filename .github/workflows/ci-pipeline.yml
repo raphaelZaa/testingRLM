@@ -50,7 +50,7 @@ jobs:
         uses: jfrog/setup-jfrog-cli@v4
         env:
           # JFrog Platform URL
-          JF_URL: https://trialt0zppb.jfrog.io # Make sure this is correct
+          JF_URL: https://jesseh.jfrog.io # Make sure this is correct
         with:
           # Name of the OIDC Integration configured in JFrog Security > Identity Providers
           oidc-provider-name: github
