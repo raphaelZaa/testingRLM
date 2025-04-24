@@ -1,0 +1,119 @@
+# GitHub Actions Workflow Name
+name: Build, Scan, and Sign with JFrog
+
+# Triggers for the workflow
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches: [ "main" ]
+
+# Permissions: Grant the workflow permission to request OIDC tokens
+permissions:
+  id-token: write # Required for OIDC authentication with JFrog
+  contents: read  # Default permission needed for checkout
+
+# Define environment variables for reusable values
+env:
+  # Define the build name (used across multiple steps)
+  JFROG_BUILD_NAME: newFeature
+  # Define the Java version
+  JAVA_VERSION: '17'
+  # Define the Java distribution
+  JAVA_DISTRIBUTION: 'temurin'
+  # Define the Maven repositories (replace if different)
+  MAVEN_DEV_VIRTUAL_REPO: newFeature-maven-dev-virtual
+  MAVEN_DEV_LOCAL_REPO: newFeature-maven-dev-local
+  # Define the filename for the predicate JSON
+  PREDICATE_FILENAME: predicate.json
+
+jobs:
+  build-scan-sign: # Renamed job for clarity
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout Code: Get the source code from the repository
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # 2. Set up JDK: Install the specified Java version
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v3
+        with:
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          java-version: ${{ env.JAVA_VERSION }}
+
+      # 3. Setup JFrog CLI: Install and configure JFrog CLI using OIDC
+      - name: Setup JFrog CLI
+        uses: jfrog/setup-jfrog-cli@v4
+        env:
+          # JFrog Platform URL
+          JF_URL: https://jesseh.jfrog.io # Make sure this is correct
+        with:
+          # Name of the OIDC Integration configured in JFrog Security > Identity Providers
+          oidc-provider-name: github
+          # Audience configured within the OIDC provider settings in JFrog
+          oidc-audience: my-aud
+          # Note: No secrets (JF_USER/PASSWORD/ACCESS_TOKEN) are needed here
+
+      # 4. Clean local Maven cache (Optional but can prevent issues)
+      - name: Clear local Maven cache
+        run: rm -rf ~/.m2/repository
+
+      # 5. Verify JFrog connection (Renumbered)
+      #    This will now use the OIDC token obtained in the setup step
+      - name: Ping JFrog Connection
+        run: jf rt ping
+
+      # 6. Configure Maven Repositories (Renumbered)
+      #    Tells JFrog CLI which Artifactory repos Maven should use
+      - name: Configure Maven Repositories with JFrog CLI
+        run: |
+          jf mvnc --global \
+            --repo-resolve-releases ${{ env.MAVEN_DEV_VIRTUAL_REPO }} \
+            --repo-resolve-snapshots ${{ env.MAVEN_DEV_VIRTUAL_REPO }} \
+            --repo-deploy-releases ${{ env.MAVEN_DEV_LOCAL_REPO }} \
+            --repo-deploy-snapshots ${{ env.MAVEN_DEV_LOCAL_REPO }}
+      # 7. Build and Deploy with Maven using JFrog CLI (Renumbered)
+      #    Compiles, packages, and deploys the artifact, collecting build info
+      - name: Maven Build & Deploy With JFrog CLI
+        run: |
+          jf mvn clean deploy -DskipTests=true -Denforcer.skip=true \
+            --build-name="${{ env.JFROG_BUILD_NAME }}" \
+            --build-number="${{ github.run_number }}"
+      # 8. Publish Build Information (Renumbered and combined steps)
+      #    Collects environment variables, Git info, and publishes the build record to Artifactory
+      - name: Publish Build Info
+        run: |
+          echo "Collecting environment variables..."
+          jf rt build-collect-env "${{ env.JFROG_BUILD_NAME }}" "${{ github.run_number }}"
+          echo "Adding Git information..."
+          # Note: OIDC might require specific setup for git operations if using a different token
+          # Ensure the default GITHUB_TOKEN has permissions if needed, or configure JF_GIT_TOKEN if necessary
+          jf rt build-add-git "${{ env.JFROG_BUILD_NAME }}" "${{ github.run_number }}"
+          echo "Publishing build info..."
+          jf rt build-publish "${{ env.JFROG_BUILD_NAME }}" "${{ github.run_number }}"
+      # 9. Scan Published Build with Xray (Renumbered)
+      #    Triggers an Xray scan on the published build artifacts
+      - name: Scan Published Build with Xray (fail on policy)
+        if: success() # Only run if previous steps succeeded
+        run: |
+          echo "Scanning build ${{ env.JFROG_BUILD_NAME }}/${{ github.run_number }} with Xray..."
+          jf bs "${{ env.JFROG_BUILD_NAME }}" "${{ github.run_number }}" --fail=true
+      
+      # 10. Create Evidence Signature for the Build
+      #     Uses the configured GPG key to sign the build info, creating evidence
+      - name: Create Build Signature Evidence
+        if: success()
+        env:
+          JFROG_CLI_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          jf evd create \
+            --build-name "${{ env.JFROG_BUILD_NAME }}" \
+            --build-number "${{ github.run_number }}" \
+            --key "${{ secrets.GPG_PRIVATE_KEY }}" \
+            --key-alias "${{ secrets.GPG_KEY_ALIAS }}" \
+            --predicate ./sign.json \
+            --predicate-type https://jfrog.com/evidence/signature/v1
